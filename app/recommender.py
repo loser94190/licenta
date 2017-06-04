@@ -47,4 +47,14 @@ class Recommender:
             name = nearest[i][0]
             neighborRatings = self.data[name]
 
-            for
+            for movie in neighborRatings:
+                if not movie in userRatings:
+                    if movie not in recommendations:
+                        recommendations[movie] = neighborRatings[movie] * weight
+                    else:
+                        recommendations[movie] = recommendations[movie] + neighborRatings[movie] * weight
+
+        recommendations = list(recommendations.items())
+        recommendations.sort(key=lambda tuple: tuple[1], reverse=True)
+
+        return recommendations[:, self.n]
