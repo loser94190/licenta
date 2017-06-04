@@ -1,6 +1,6 @@
 class Recommender:
 
-    def __init__(self, num, k, data, distance = 'manhattan'):
+    def __init__(self, data, distance = 'manhattan', num=2, k=1):
         self.k = k
         self.num = num
         self.data = data
@@ -22,11 +22,13 @@ class Recommender:
 
     def nearestNeighbor(self, username):
         distances = []
-
         for instance in self.data:
             if instance != username:
-                distance = self.function(self.data[username], self.data[instance])
-                distances.append((instance, distance))
+                try:
+                    distance = self.function(self.data[username], self.data[instance])
+                except(KeyError):
+                    distance = -1
+                    distances.append((instance, distance))
 
         distances.sort(key = lambda tuple: tuple[1], reverse = True)
         return distances
@@ -52,9 +54,12 @@ class Recommender:
                     if movie not in recommendations:
                         recommendations[movie] = neighborRatings[movie] * weight
                     else:
-                        recommendations[movie] = recommendations[movie] + neighborRatings[movie] * weight
+                        recommendations[movie] = recommendations[
+                                                     movie] + neighborRatings[movie] * weight
 
         recommendations = list(recommendations.items())
         recommendations.sort(key=lambda tuple: tuple[1], reverse=True)
 
-        return recommendations[:, self.n]
+        return recommendations[:self.num]
+
+
