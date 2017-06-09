@@ -18,6 +18,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_message = u"You are now logged in"
 
+movie_list = ['Lord of the rings', "The Hobbit", "Movie"]
+user_movie_list = ['Movie1', 'Movie2']
 
 @app.route('/')
 @app.route('/index')
@@ -45,8 +47,7 @@ def login():
             session['logged_in'] = True
             user_object = User(user_typed['name'])
             login_user(user_object)
-            return render_template('/index.html',
-                            name = session['username'])
+            return redirect(url_for('recommender'))
         return render_template("error.html",
                                message='Bad password')
 
@@ -77,11 +78,28 @@ def register():
             session['username'] = request.form['username']
             flash('registration succesful')
             return redirect('/index')
-        return 'That user already exists'
+        return render_template('/error.html',
+                               message = "This user already exists")
 
     return render_template('/register.html',
                            title='REGISTER')
 
+
+@app.route('/recommender',  methods=['GET', 'POST'])
+@login_required
+def recommender():
+    if request.method == 'POST':
+        if session['username']:
+            users = mongo.db.users
+            movie = request.form['movie']
+            rating = request.form['rating']
+            users.find_and_modify(query={"name":session['username']},
+                                update={"$set": {movie: rating}})
+
+    return render_template("/recommender.html",
+                           user=session['username'],
+                           movies = movie_list,
+                           user_movies = user_movie_list)
 
 @login_manager.user_loader
 def load_user(id):

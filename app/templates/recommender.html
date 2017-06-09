@@ -1,10 +1,42 @@
-<!DOCTYPE html>
+{% extends "base.html" %}
+{% block content %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title></title>
+     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <p> Hello {{ user }}!</p>
+    <div>
+        <label>Movies watched:</label>
+                <select name="movies" width="300px">
+                    {% for x in user_movies %}
+                    <option value="{{ x }}"{% if loop.first %} SELECTED{% endif %}>{{ x }}</option>
+                    {% endfor %}
+                </select>
+    </div>
+    <p>List of movies:</p>
+        <table>
+        <form action="{{ url_for('recommender') }}" method="POST">
+            <td>
+                <select name="movie" width="300px">
+                    {% for x in movies %}
+                    <option value="{{ x }}"{% if loop.first %} SELECTED{% endif %}>{{ x }}</option>
+                    {% endfor %}
+                </select>
+                <select name="rating" width="300px">
+                    {% for x in range(6) %}
+                    <option value="{{ x }}"{% if loop.first %} SELECTED{% endif %}>{{ x }}</option>
+                    {% endfor %}
+                </select>
+            <input type="submit" value="Submit" />
+          </td>
+
+
+        </form>
+    </table>
 
 </body>
 </html>
+{% endblock %}
