@@ -1,10 +1,14 @@
 
 import hashlib
 
+from flask.ext.login import UserMixin
 
-class User():
-    def __init__(self, username):
-        self.username = username
+
+class User(UserMixin):
+    def __init__(self,user_id):
+        self.id = user_id
+        self.username = user_id
+        self.ratings = {}
 
     def is_authenticated(self):
         return True
@@ -13,7 +17,11 @@ class User():
         return True
 
     def get_id(self):
-        return self.username
+        return str(self.id)
+
+    def set_rating(self, movie, rating):
+        self.ratings[movie] = rating
+
 
     @staticmethod
     def validate(pass_hash, password):

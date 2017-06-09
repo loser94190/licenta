@@ -11,8 +11,13 @@
   <body>
     <div>
         <a href="/index">Home</a>
-        <a href="/login">Login</a>
+        {% if not current_user.is_authenticated %}
+            <a href="/login">Login</a>
+        {% endif %}
         <a href="/register">Register</a>
+        {% if current_user.is_authenticated %}
+            <a href="/logout">Logout</a>
+        {% endif %}
     </div>
     <hr>
     {%  with messages = get_flashed_messages() %}
