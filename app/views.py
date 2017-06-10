@@ -18,12 +18,14 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_message = u"You are now logged in"
 
+
 movie_list = ['Lord of the rings', "The Hobbit", "Movie"]
 user_movie_list = ['Movie1', 'Movie2']
 
 @app.route('/')
 @app.route('/index')
 def index():
+
     if 'username' in session:
         return render_template("/index.html",
                                title='Home',
@@ -77,18 +79,24 @@ def register():
     logout_user()
     session.pop('username', None)
     session['logged_in'] = False
+    first = True
     if request.method == 'POST':
         users = mongo.db.users
         user_exists = mongo.db.users.find_one({'name': request.form['username']})
+        first = False
 
         if user_exists is None:
             hashed_password = hashlib.sha224((request.form['pass']).encode('utf-8')).hexdigest()
             users.insert({'name': request.form['username'], 'pass': hashed_password, 'movies':[]})
             session['username'] = request.form['username']
-            flash('registration succesful')
-            return redirect('/index')
+
+            return render_template('/register.html',
+                                   check = first,
+                                    registration = True)
         return render_template('/register.html',
-                               error  = "This user already exists")
+                               check=first,
+                               registration=False,
+                               error="This user already exists")
 
     return render_template('/register.html',
                            title='REGISTER')
@@ -97,6 +105,7 @@ def register():
 @app.route('/recommender',  methods=['GET', 'POST'])
 @login_required
 def recommender():
+    movie_db = mongo.db.movie_collection
     users = mongo.db.users
     user_mv = users.find_one({"name": session['username']})['movies']
     #print(movie_list)
@@ -112,21 +121,45 @@ def recommender():
             rating = request.form['rating']
             if mov not in movies:
                 users.find_and_modify(query={"name":session['username']},
-                                    update={"$push": {"movies" : {'movie':mov, 'rating:':rating}}})
+                                    update={"$push": {"movies" : {'movie':mov, 'rating':rating}}})
+
+                print("Movie info" + "\n")
+                if not movie_db.find_one({'name': mov}):
+                    movie_db.insert({'name': mov, 'ratings': [{'rating':rating, 'user':session['username']}]})
+                else:
+                    movie_db.find_and_modify(
+                        query = {"name": mov},
+                        update={"$push": {"ratings":{'user':session['username'], 'rating':rating}}})
+
             else:
                 #print(users.find({"name": session['username'],'movies.movie':{'$exists':True}}))
                 #users.find_and_modify(query={"name": session['username'],'movies.movie':{'$exists':True}},
                                       #update={"$set": {movie: rating}})
                 #users.update({"name":session['username'], { '$set': {"movies[movie]" : rating} })
                 ##users.update({'name': session['username'], "movies.movie" : mov}, { '$set': {"rating" : rating} })
-                users.find_and_modify(query={"name": session['username'], 'movies.movie': mov},
-                    update={"$set": {"movies.movie.mov.rating": rating}})
-                print("MORE INFO")
-                print(users.find_one({"name": session['username'], 'movies.movie': mov}))
+
+                #users.find_and_modify(query={"name": session['username'], 'movies.movie': mov},
+                    #update={"$set": {"movies.movie.rating": rating}})
+
+                users.update({
+                    "name": session['username'],
+                    "movies": {"$elemMatch": {"movie": mov}}},
+                    {"$set": {"movies.$.rating": rating}}
+                )
+
+
+                #print("MORE INFO")
+                #print(users.find_one({"name": session['username'],
+                    #"movies": {"$elemMatch": {"movie": mov}}}))
+
             if user_mv:
                 movies = [x['movie'] for x in users.find_one({"name": session['username']})['movies']]
                 #print("MORE INFO")
                 #print(movies)
+
+
+
+
     return render_template("/recommender.html",
                            user=session['username'],
                            movies = movie_list,
@@ -151,7 +184,7 @@ def recommender():
             rating = request.form['rating']
             if movie not in movies:
                 users.find_and_modify(query={"name":session['username']},
-                                    update={"$push": {"movies" : {'movie':movie, 'rating:':rating}}})
+                                    update={"$push": {"movies" : {'movie':movie, 'rating':rating}}})
             else:
                 print(users.find({"name": session['username'],'movies.movie':{'$exists':True}}))
                 #users.find_and_modify(query={"name": session['username'],'movies.movie':{'$exists':True}},

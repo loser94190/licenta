@@ -5,14 +5,24 @@
             <h3>{{ error }}</h3>
             </div>
     {% endif %}
+
+    <div class="container" style="text-align: center; max_width:30%">
+
     <form method=POST action="{{ url_for('login') }}">
-        <div class = "form-group" style="margin-left:15px">
-            <h2 class="form-signin-heading">Log in</h2>
-                <input type="text" name="username" class="form-control" style="max-width:25%; margin-top:5px" placeholder="Username"/>
+        <div class="row-md-15 row">
+            <div class = "form-group center" style="margin-left:15px">
 
-                <input type="password" name="pass" class="form-control" style="max-width:25%; margin-top:5px"placeholder="Password"/>
+                <h2 class="form-signin-heading" >Log In</h2>
+
+                <input type="text" name="username" class="form-control text-center " style="margin-top: 5px; max-width: 35%; margin-left:32.5%"  placeholder="Username"/>
+
+                <input type="password" name="pass" class="form-control text-center" style="margin-top: 5px; max-width: 35%; margin-left:32.5%" placeholder="Password"/>
+
                 <input class="btn btn-primary" type="submit" value="Submit" style="margin-top:5px"/>
-        </div>
-</form>
 
+
+            </div>
+            </div>
+    </form>
+    </div>
 {% endblock %}

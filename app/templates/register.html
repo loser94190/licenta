@@ -3,20 +3,44 @@
 {% block content %}
 
 
-    {% if  error%}
-            <div class = error align = "center" style="margin-bottom: 5px">
-            <h3>{{ error }}</h3>
+        <div class="container" style="text-align: center; max_width:30%">
+        <form method=POST action="{{ url_for('register') }}">
+            <div class="row-md-15 row">
+            <div class = "form-group center" style="margin-left:15px">
+
+                <h2 class="form-signin-heading" >Please sign up</h2>
+
+                <input type="text" name="username" class="form-control text-center " style="margin-top: 5px; max-width: 35%; margin-left:32.5%"  placeholder="Username"/>
+
+                <input type="password" name="pass" class="form-control text-center" style="margin-top: 5px; max-width: 35%; margin-left:32.5%" placeholder="Password"/>
+
+                <input class="btn btn-primary" type="submit" value="Submit" style="margin-top:5px"/>
+
+
             </div>
+            </div>
+
+        </form>
+        </div>
+
+    {% if registration and not check %}
+        <div class="alert alert-success" style = "height:35px;padding-top:8px;width:50%;Float:left;margin-left:25%;">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">
+                ×</button>
+            <span class="glyphicon glyphicon-ok"></span>
+
+                    Registration succesful.
+        </div>
     {% endif %}
 
-        <form method=POST action="{{ url_for('register') }}">
-        <div class = "form-group" style="margin-left:15px">
-             <h2 class="form-signin-heading">Please sign up</h2>
-                <input type="text" name="username" class="form-control" style="max-width:25%; margin-top:5px" placeholder="Username"/>
+    {% if not registration and not check and error%}
+        <div class="alert alert-danger" style = "height:35px;padding-top:8px;width:50%;Float:left;margin-left:25%;">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">
+                ×</button>
+            <span class="glyphicon glyphicon-exclamation-sign"></span>
 
-                <input type="password" name="pass" class="form-control" style="max-width:25%; margin-top:5px" placeholder="Password"/>
-                <input class="btn btn-primary" type="submit" value="Submit" style="margin-top:5px"/>
+                   {{ error }}
         </div>
-        </form>
+    {% endif %}
 
 {% endblock %}
