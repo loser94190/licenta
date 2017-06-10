@@ -5,21 +5,22 @@
     {% else %}
     <title>Recommend</title>
     {% endif %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.css') }}">
       <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-      <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,600" rel="stylesheet">
 
 
   </head>
   <body>
     <div class = "header">
-        <a href="/index">Home</a>
+        <a href="/index"><button type="button" class="btn btn-primary" style = "margin-top:5px; margin-left:11px">Home</button></a>
         {% if not current_user.is_authenticated %}
-            <a href="/login">Login</a>
-            <a href="/register">Register</a>
+            <a href="/login"><button type="button" class="btn btn-primary" style = "margin-top:5px; margin-left:3px">Login</button></a>
+            <a href="/register"><button type="button" class="btn btn-primary" style = "margin-top:5px; margin-left:3px">Register</button></a>
         {% endif %}
         {% if current_user.is_authenticated %}
-            <a href="/logout">Logout</a>
-            <a href="/recommender">Recommendations</a>
+            <a href="/logout"><button type="button" class="btn btn-primary" style = "margin-top:5px; margin-left:3px">Log Out</button></a>
+            <a href="/recommender"><button type="button" class="btn btn-primary" style = "margin-top:5px; margin-left:3px">Recommender</button></a>
+            <a href="/profile"><button type="button" class="btn btn-primary" style = "margin-top:5px; margin-left:3px">Profile</button></a>
         {% endif %}
     </div>
     <hr>
