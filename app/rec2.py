@@ -1,6 +1,10 @@
+data = {'2': {'The Hobbit': '3', 'Movie': '1'}, '1': {'The Hobbit': '4', 'Lord of the rings': '4'}, '5': {'The Hobbit': '5', 'Movie': '4'}}
+
+
+
 class Recommender:
 
-    def __init__(self, data, distance = 'manhattan', num=2, k=1):
+    def __init__(self, data, distance = 'manhattan', num=1, k=1):
         self.k = k
         self.num = num
         self.data = data
@@ -37,6 +41,7 @@ class Recommender:
         recommendations = {}
 
         nearest = self.nearestNeighbor(user)
+
         userRatings = self.data[user]
         totalDistance = 0.0
 
@@ -51,18 +56,19 @@ class Recommender:
             for movie in neighborRatings:
                 if not movie in userRatings:
                     if movie not in recommendations:
-                        recommendations[movie] = neighborRatings[movie] * 2
+                        recommendations[movie] = neighborRatings[movie] * int(weight)
+                        print(recommendations)
                     else:
-                        recommendations[movie] = recommendations[
-                                                     movie] + neighborRatings[movie] * weight
+                        recommendations[movie] = recommendations[movie] + neighborRatings[movie] * weight
+                        print(recommendations)
 
         recommendations = list(recommendations.items())
+
         recommendations.sort(key=lambda tuple: tuple[1], reverse=True)
 
         return recommendations[:self.num]
 
-data = {'2': {'The Hobbit': '3', 'Movie': '1'}, '1': {'The Hobbit': '4', 'Lord of the rings': '4'}, '5': {'The Hobbit': '5', 'Movie': '4'}}
-
 
 r = Recommender(data)
-print(r.recommend("2"))
+print(r.recommend("2")[0][0])
+

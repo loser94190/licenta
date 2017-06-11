@@ -23,24 +23,6 @@
         </form>
         </div>
 
-    {% if registration and not check %}
-        <div class="alert alert-success" style = "height:35px;padding-top:8px;width:50%;Float:left;margin-left:25%;">
-            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">
-                ×</button>
-            <span class="glyphicon glyphicon-ok"></span>
 
-                    Registration succesful.
-        </div>
-    {% endif %}
-
-    {% if not registration and not check and error%}
-        <div class="alert alert-danger" style = "height:35px;padding-top:8px;width:50%;Float:left;margin-left:25%;">
-            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">
-                ×</button>
-            <span class="glyphicon glyphicon-exclamation-sign"></span>
-
-                   {{ error }}
-        </div>
-    {% endif %}
 
 {% endblock %}

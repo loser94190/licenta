@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+    <div class="col-md-12">
+    {% for user in users%}
+        <div class="media mb-1">
+        <a class="media-left waves-light">
+            <img class="rounded-circle" src="https://mdbootstrap.com/img/Photos/Avatars/avatar-14.jpg" alt="Generic placeholder image">
+        </a>
+        <div class="media-body">
+            <a href="/users/{{ user }}"><h4 class="media-heading">{{ user }}</h4></a>
+            <ul class="rating inline-ul">
+            </ul>
+            <div class="media-body">
+                <p>Favorite movie: movie</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

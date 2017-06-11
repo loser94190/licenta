@@ -1,15 +1,18 @@
 import gc
 from flask import render_template, flash, redirect, request, session, Flask
 from flask import url_for
-from flask.ext.login import LoginManager
-
+#from flask.ext.login import LoginManager
+from flask_login import LoginManager
 from app import app
 #from flask.ext.pymongo import PyMongo
 from flask_pymongo import PyMongo
 import hashlib
-from flask.ext.login import login_user, logout_user, login_required
+#from flask.ext.login import login_user, logout_user, login_required
+
+from flask_login import login_user, logout_user, login_required
 from .forms import LoginForm
 from .user import User
+from .recommender import Recommender
 
 
 mongo = PyMongo(app)
@@ -19,20 +22,28 @@ login_manager.init_app(app)
 login_manager.login_message = u"You are now logged in"
 
 
-movie_list = ['Lord of the rings', "The Hobbit", "Movie"]
+movie_list = ['Lord of the rings', "The Hobbit", "Movie", 'Movie1', 'movie2', 'movie3', 'movie4']
 user_movie_list = ['Movie1', 'Movie2']
 
 @app.route('/')
 @app.route('/index')
 def index():
+    number = mongo.db.users.find({'name':{'$exists':True}}).count()
+    plural = False
+    if number > 1:
+        plural = True
 
-    if 'username' in session:
+    try:
+        session['username']
+    except KeyError:
         return render_template("/index.html",
-                               title='Home',
-                               name=session['username'])
-    else:
-        return render_template("/register.html")
+                               user_number=number,
+                               plural_check=plural)
 
+    return render_template("/index.html",
+                           username=session['username'],
+                           user_number=number,
+                           plural_check=plural)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -41,19 +52,19 @@ def login():
         user_typed = users.find_one({'name': request.form['username']})
         print(user_typed)
 
-        error = ""
-
         if user_typed is None:
             return render_template("login.html",
-                                   error='User does not exist')
+                                   error = "User does not exist")
+
         elif hashlib.sha224((request.form['pass']).encode('utf-8')).hexdigest() == user_typed['pass']:
             session['username'] = request.form['username']
             session['logged_in'] = True
             user_object = User(user_typed['name'])
             login_user(user_object)
+
             return redirect(url_for('recommender'))
-        return render_template("login.html",
-                               error='Bad password')
+        flash('Bad password', 'danger')
+        return render_template("login.html")
 
     return render_template('/login.html',
                             title = 'LOGIN')
@@ -76,25 +87,36 @@ def logout():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    logout_user()
-    session.pop('username', None)
-    session['logged_in'] = False
+    #logout_user()
+    #session.pop('username', None)
+    #session['logged_in'] = False
+
     first = True
     if request.method == 'POST':
         users = mongo.db.users
         user_exists = mongo.db.users.find_one({'name': request.form['username']})
         first = False
 
-        if user_exists is None:
+        if user_exists is None and len(request.form['username']) >= 3 and len(request.form['pass']) >= 3:
             hashed_password = hashlib.sha224((request.form['pass']).encode('utf-8')).hexdigest()
             users.insert({'name': request.form['username'], 'pass': hashed_password, 'movies':[]})
             session['username'] = request.form['username']
 
+            flash("Registration succesful", 'success')
             return render_template('/register.html',
-                                   check = first,
                                     registration = True)
+
+        elif len(request.form['username']) < 3:
+            return render_template('/register.html',
+                                   registration=False,
+                                   error="Username length should be > 3")
+
+        elif len(request.form['pass']) < 3:
+            return render_template('/register.html',
+                                   registration=False,
+                                   error="Password length should be > 3")
+
         return render_template('/register.html',
-                               check=first,
                                registration=False,
                                error="This user already exists")
 
@@ -105,13 +127,19 @@ def register():
 @app.route('/recommender',  methods=['GET', 'POST'])
 @login_required
 def recommender():
+
     movie_db = mongo.db.movie_collection
     users = mongo.db.users
+    data = {}
+
     user_mv = users.find_one({"name": session['username']})['movies']
+
+
     #print(movie_list)
     movies = []
-    print("INFO")
-    print([x['movie'] for x in users.find_one({"name": session['username']})['movies']])
+
+    #print("INFO")
+    #print([x['movie'] for x in users.find_one({"name": session['username']})['movies']])
     if user_mv:
         movies = [x['movie'] for x in users.find_one({"name": session['username']})['movies']]
     #user_movie_list = []
@@ -158,12 +186,29 @@ def recommender():
                 #print(movies)
 
 
+    for doc in users.find({'movies':{'$exists':True, '$not': {'$size': 0}}}):
+        data[doc['name']] = {z['movie']:z['rating'] for z in doc['movies']}
 
+    print("DATA INFO")
+    print(data)
+
+    r = Recommender(data)
+
+    try:
+        print(r.recommend(session['username']))
+        recommendations = [touple[0] for touple in r.recommend(session['username'])]
+        print(recommendations)
+    except KeyError:
+        text = 'You need to add some movies'
+    except IndexError:
+        text = "No more recommendations"
 
     return render_template("/recommender.html",
                            user=session['username'],
                            movies = movie_list,
                            user_movies = movies)
+
+
 
 '''
 @app.route('/recommender',  methods=['GET', 'POST'])
@@ -199,6 +244,17 @@ def recommender():
                            movies = movie_list,
                            user_movies = movies)
 '''
+
+
+@app.route('/users')
+@login_required
+def users():
+    users = mongo.db.users
+    user_list = [user['name'] for user in users.find({'name':{'$exists':True}})]
+    print(user_list)
+    return render_template("/users.html",
+                           users=user_list)
+
 @login_manager.user_loader
 def load_user(id):
     return User(id)

@@ -1,7 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
 
-    {% if current_user.is_authenticated %}
-        <h1>Hi  {{ name }}</h1>
-    {% endif %}
+
+    <div class="jumbotron text-center">
+        {% if not current_user.is_authenticated %}
+            <h1>Welcome to GIGEL!</h1>
+            <p class="lead">This is a movie recommender app. Try it out Yourself!</p>
+
+                <a href="/register" class="btn btn-primary btn-lg">Register</a>
+                <a href="/login" class="btn btn-success btn-lg">Login</a>
+        {% endif %}
+         {% if current_user.is_authenticated %}
+             <h1>Hello {{ username }}</h1>
+             <p class="lead">Thank you for using our App</p>
+            {% if plural_check %}
+                <p> There are currentrly {{ user_number }} users registered!</p>
+            {% endif %}
+
+             {% if not plural_check %}
+                <p> There is currentrly {{ user_number }} user registered!</p>
+            {% endif %}
+         {% endif %}
+    </div>
+
+
+
+
+
 {% endblock %}
