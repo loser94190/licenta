@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container" style="text-align: center; max_width:30%">
+
+    <form method=POST action="{{ url_for('add_movie') }}">
+        <div class="row-md-15 row">
+            <div class = "form-group center" style="margin-left:15px">
+
+                <h2 class="form-signin-heading" >Add movie</h2>
+
+                <input type="text" name="movie" class="form-control text-center " style="margin-top: 5px; max-width: 35%; margin-left:32.5%"  placeholder="Movie Name"/>
+
+                <input class="btn btn-primary" type="submit" value="Submit" style="margin-top:5px"/>
+
+
+            </div>
+            </div>
+    </form>
+    </div>
+{% endblock %}

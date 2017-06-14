@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 
+
 <div style="margin-left: 2%">
-    <p> Hello {{ user }}!</p>
+    <!-- <p> Hello {{ user }}!</p> -->
     <div>
         <label>Movies watched:</label>
                 <select name="movies" width="300px">
@@ -11,11 +12,12 @@
                     {% endfor %}
                 </select>
     </div>
-    <p>List of movies:</p>
+    <div style="margin-top:5px">
         <table>
+
         <form action="{{ url_for('recommender') }}" method="POST">
             <td>
-                <select name="movie" width="300px">
+                <label>List of Movies:</label><select name="movie" width="300px">
                     {% for x in movies %}
                     <option value="{{ x }}"{% if loop.first %} SELECTED{% endif %}>{{ x }}</option>
                     {% endfor %}
@@ -31,7 +33,26 @@
 
         </form>
     </table>
+    </div>
+
 
 </div>
-</html>
+
+    <div class="col-md-12" style="margin-top:3%">
+    {% for movie in recommenations%}
+        <div class="media mb-1">
+        <a class="media-left waves-light">
+            <img class="rounded-circle" height="230" width="120" src="{{ movie.poster }}" alt="Poster not found">
+        </a>
+        <div class="media-body">
+            <a href="{{ movie.imdbLink }}"><h4 class="media-heading">{{ movie.name }}</h4></a>
+            <div class="media-body">
+                <p>Plot: {{ movie.plot }}</p>
+            </div>
+        </div>
+
+    {% endfor %}
+    </div>
+    </div>
+
 {% endblock %}

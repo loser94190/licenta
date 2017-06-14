@@ -5,14 +5,20 @@ from flask import url_for
 from flask_login import LoginManager
 from app import app
 #from flask.ext.pymongo import PyMongo
-from flask_pymongo import PyMongo
+from flask_pymongo import PyMongo, pymongo
 import hashlib
 #from flask.ext.login import login_user, logout_user, login_required
 
 from flask_login import login_user, logout_user, login_required
-from .forms import LoginForm
+#from .forms import LoginForm
 from .user import User
 from .recommender import Recommender
+from .movie import Movie, LocalMovie
+
+from flask_paginate import Pagination
+
+import omdb
+import json, requests
 
 
 mongo = PyMongo(app)
@@ -22,13 +28,15 @@ login_manager.init_app(app)
 login_manager.login_message = u"You are now logged in"
 
 
-movie_list = ['Lord of the rings', "The Hobbit", "Movie", 'Movie1', 'movie2', 'movie3', 'movie4']
-user_movie_list = ['Movie1', 'Movie2']
+
+#user_movie_list = ['Movie1', 'Movie2']
+#movie_list = ['Lord of the rings', "The Hobbit", "Matrix", 'Titanic', 'Life', 'Kung Fu Panda', 'X-men']
 
 @app.route('/')
 @app.route('/index')
 def index():
     number = mongo.db.users.find({'name':{'$exists':True}}).count()
+    number_of_movies = mongo.db.movie_db.find({'Title':{'$exists':True}}).count()
     plural = False
     if number > 1:
         plural = True
@@ -38,11 +46,13 @@ def index():
     except KeyError:
         return render_template("/index.html",
                                user_number=number,
+                               movie_number=number_of_movies,
                                plural_check=plural)
 
     return render_template("/index.html",
                            username=session['username'],
                            user_number=number,
+                           movie_number=number_of_movies,
                            plural_check=plural)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -73,6 +83,7 @@ def login():
 @app.route('/profile')
 @login_required
 def profile():
+    movies = mongo.db.users.find_one({"name":session['username']})['movies']
     return render_template('/profile.html',
                            username = session['username'])
 
@@ -129,17 +140,17 @@ def register():
 def recommender():
 
     movie_db = mongo.db.movie_collection
+    movie_data = mongo.db.movie_db
+    movie_list = [movie['Title'] for movie in movie_data.find({"Title": {'$exists': True}})]
+
+    #print(movie_list)
     users = mongo.db.users
     data = {}
 
     user_mv = users.find_one({"name": session['username']})['movies']
 
-
-    #print(movie_list)
     movies = []
 
-    #print("INFO")
-    #print([x['movie'] for x in users.find_one({"name": session['username']})['movies']])
     if user_mv:
         movies = [x['movie'] for x in users.find_one({"name": session['username']})['movies']]
     #user_movie_list = []
@@ -147,6 +158,11 @@ def recommender():
         if session['username']:
             mov = request.form['movie']
             rating = request.form['rating']
+            title = movie_data.find_one({'Title': mov})['Title']
+            _rating = movie_data.find_one({'Title': mov})['IMDb_rating']
+            poster = movie_data.find_one({'Title': mov})['Poster']
+            plot = movie_data.find_one({'Title': mov})['Plot']
+            omdb_movie = LocalMovie(title, _rating, poster, plot)
             if mov not in movies:
                 users.find_and_modify(query={"name":session['username']},
                                     update={"$push": {"movies" : {'movie':mov, 'rating':rating}}})
@@ -197,16 +213,20 @@ def recommender():
     try:
         print(r.recommend(session['username']))
         recommendations = [touple[0] for touple in r.recommend(session['username'])]
+        omdb_movies = [Movie(mov) for mov in recommendations]
         print(recommendations)
     except KeyError:
         text = 'You need to add some movies'
+        omdb_movies = []
     except IndexError:
         text = "No more recommendations"
+        omdb_movies = []
 
     return render_template("/recommender.html",
                            user=session['username'],
                            movies = movie_list,
-                           user_movies = movies)
+                           user_movies = movies,
+                           recommenations=omdb_movies)
 
 
 
@@ -255,6 +275,54 @@ def users():
     return render_template("/users.html",
                            users=user_list)
 
+@app.route('/movies')
+@login_required
+def movies():
+    movie_data = mongo.db.movie_db
+    movie_list = [movie['Title'] for movie in movie_data.find({"Title":{'$exists':True}}).sort("Title", pymongo.ASCENDING)]
+    omdb_movies = [Movie(mov) for mov in movie_list]
+
+    search = False
+    q = request.args.get('q')
+    if q:
+        search = True
+
+    page = request.args.get('page', type=int, default=1)
+
+    ITEMS_PER_PAGE = 5
+    i = (page - 1) * ITEMS_PER_PAGE
+    entries = omdb_movies[i:i+ITEMS_PER_PAGE]
+
+    pagination = Pagination(page=page, total=len(movie_list), search=search, record_name='movies', per_page=ITEMS_PER_PAGE, css_framework='bootstrap3')
+
+    return render_template("/movies.html",
+                           movies=entries,
+                           pagination=pagination,
+                           page=page,
+                           per_page=5)
+
+
+@app.route('/add_movie', methods=['GET', 'POST'])
+def add_movie():
+    if request.method == 'POST':
+        movies = mongo.db.movie_db
+
+        movie_from_form = request.form['movie']
+        try:
+            omdb_movie = Movie(movie_from_form)
+            if not movies.find_one({"Title":omdb_movie.name}) and omdb_movie.status:
+                movies.insert({'Title': omdb_movie.name, 'IMDb_rating': omdb_movie.IMDb_rating, 'Poster': omdb_movie.poster, 'Plot':omdb_movie.plot})
+                flash('Movie was added', 'success')
+            else:
+                flash('Movie already exists', 'danger')
+        except:
+            flash('Something happened:', 'danger')
+
+    return render_template("add_movie.html")
+
+
+
 @login_manager.user_loader
 def load_user(id):
     return User(id)
+

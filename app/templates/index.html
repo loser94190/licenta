@@ -12,7 +12,7 @@
         {% endif %}
          {% if current_user.is_authenticated %}
              <h1>Hello {{ username }}</h1>
-             <p class="lead">Thank you for using our App</p>
+             <p class="lead" style="margin-top: 1%">Thank you for using Gigel</p>
             {% if plural_check %}
                 <p> There are currentrly {{ user_number }} users registered!</p>
             {% endif %}
@@ -20,11 +20,9 @@
              {% if not plural_check %}
                 <p> There is currentrly {{ user_number }} user registered!</p>
             {% endif %}
+              <p> And we have {{ movie_number }} movies in our database!</p>
          {% endif %}
     </div>
-
-
-
 
 
 {% endblock %}

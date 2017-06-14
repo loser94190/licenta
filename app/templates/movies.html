@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+
+        <div class="col-md-12">
+        {{ pagination.info }}
+        {{ pagination.links }}
+        {% for movie in movies%}
+            <div class="media mb-1">
+            {{ loop.index }}
+            <a class="media-left waves-light">
+                <img class="rounded-circle" height="230" width="120" src="{{ movie.poster }}" alt="Generic placeholder image">
+            </a>
+            <div class="media-body">
+                <a href="/users/{{ movie.name }}"><h4 class="media-heading">{{ movie.name }}</h4></a>
+                <ul class="rating inline-ul">
+                    IMDb Rating: {{ movie.IMDb_rating }}
+                </ul>
+                <div class="media-body">
+                    <p>Plot: {{ movie.plot }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {{ pagination.links }}
+    </div>
+
+{% endblock %}

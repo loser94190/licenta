@@ -1,9 +1,16 @@
 {% extends "base.html" %}
 
-{% block content %}
-    <body>
-        <h2>
-        {{ username }}
-        </h2>
-    </body>
-{% endblock %}
+    <div class="jumbotron text-center">
+        {% if current_user.is_authenticated %}
+
+            <p class="lead">This is a movie recommender app. Try it out Yourself!</p>
+
+            <a href="/register" class="btn btn-primary btn-lg">Register</a>
+            <a href="/login" class="btn btn-success btn-lg">Login</a>
+
+
+            <p> There is currentrly {{ user_number }} user registered!</p>
+            <p> And we have {{ movie_number }} movies in our database!</p>
+
+    </div>
+    {% endif %}

@@ -26,3 +26,9 @@ class User(UserMixin):
     @staticmethod
     def validate(pass_hash, password):
         return hashlib.sha224((password).encode('utf-8')).hexdigest() == pass_hash
+
+class PrintedUser():
+    def __init__(self, name, poster, favorite):
+        self.name = name
+        self.poster = poster
+        self.favorite = favorite

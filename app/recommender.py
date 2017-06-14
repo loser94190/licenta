@@ -14,7 +14,7 @@ class Recommender:
         common = False
         for key in rating1:
             for key in rating2:
-                dist += abs(int(rating1[key]) - int(rating2[key]))
+                dist += abs(float(rating1[key]) - float(rating2[key]))
                 common = True
         if common:
             return dist
