@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 
+
     <div class="col-md-12">
+        {{ pagination.info }}
+    {{ pagination.links }}
     {% for user in users%}
         <div class="media mb-1">
         <a class="media-left waves-light">

@@ -35,7 +35,10 @@ login_manager.login_message = u"You are now logged in"
 @app.route('/')
 @app.route('/index')
 def index():
+    #get the number of users
     number = mongo.db.users.find({'name':{'$exists':True}}).count()
+
+    #get the number of movies
     number_of_movies = mongo.db.movie_db.find({'Title':{'$exists':True}}).count()
     plural = False
     if number > 1:
@@ -59,6 +62,8 @@ def index():
 def login():
     if request.method == 'POST':
         users = mongo.db.users
+        #check if the user exists in the data base
+        #None if not
         user_typed = users.find_one({'name': request.form['username']})
         print(user_typed)
 
@@ -141,7 +146,7 @@ def recommender():
 
     movie_db = mongo.db.movie_collection
     movie_data = mongo.db.movie_db
-    movie_list = [movie['Title'] for movie in movie_data.find({"Title": {'$exists': True}})]
+    movie_list = [movie['Title'] for movie in movie_data.find({"Title": {'$exists': True}}).sort("Title", pymongo.ASCENDING)]
 
     #print(movie_list)
     users = mongo.db.users
@@ -162,12 +167,15 @@ def recommender():
             _rating = movie_data.find_one({'Title': mov})['IMDb_rating']
             poster = movie_data.find_one({'Title': mov})['Poster']
             plot = movie_data.find_one({'Title': mov})['Plot']
-            omdb_movie = LocalMovie(title, _rating, poster, plot)
+            genre = movie_data.find_one({'Title': mov})['Genre']
+            omdb_movie = LocalMovie(title, _rating, poster, plot, genre)
+
             if mov not in movies:
                 users.find_and_modify(query={"name":session['username']},
                                     update={"$push": {"movies" : {'movie':mov, 'rating':rating}}})
 
                 print("Movie info" + "\n")
+                # where mov is the movie added by the user
                 if not movie_db.find_one({'name': mov}):
                     movie_db.insert({'name': mov, 'ratings': [{'rating':rating, 'user':session['username']}]})
                 else:
@@ -202,7 +210,11 @@ def recommender():
                 #print(movies)
 
 
+    #find each document that has a 'movies' field,
+    #with size not 0
     for doc in users.find({'movies':{'$exists':True, '$not': {'$size': 0}}}):
+        #insert the data in a dictionary {'movie': rating}
+        #that will be used as input for the recommender system
         data[doc['name']] = {z['movie']:z['rating'] for z in doc['movies']}
 
     print("DATA INFO")
@@ -211,21 +223,24 @@ def recommender():
     r = Recommender(data)
 
     try:
-        print(r.recommend(session['username']))
+        #print(r.recommend(session['username']))
         recommendations = [touple[0] for touple in r.recommend(session['username'])]
         omdb_movies = [Movie(mov) for mov in recommendations]
-        print(recommendations)
+
+    #check if there are movies in the input data set
     except KeyError:
         text = 'You need to add some movies'
         omdb_movies = []
+
+    #check if there are output recommendations
     except IndexError:
         text = "No more recommendations"
         omdb_movies = []
 
     return render_template("/recommender.html",
                            user=session['username'],
-                           movies = movie_list,
-                           user_movies = movies,
+                           movies=movie_list,
+                           user_movies=movies,
                            recommenations=omdb_movies)
 
 
@@ -270,10 +285,32 @@ def recommender():
 @login_required
 def users():
     users = mongo.db.users
+
+    #query and transform to list
     user_list = [user['name'] for user in users.find({'name':{'$exists':True}})]
     print(user_list)
+
+
+
+    search = False
+    q = request.args.get('q')
+    if q:
+        search = True
+
+    page = request.args.get('page', type=int, default=1)
+
+    ITEMS_PER_PAGE = 3
+    #get the current item number
+    i = (page - 1) * ITEMS_PER_PAGE
+    entries = user_list[i:i+ITEMS_PER_PAGE]
+
+    pagination = Pagination(page=page, total=len(user_list), search=search, record_name='movies', per_page=ITEMS_PER_PAGE, css_framework='bootstrap3')
+
     return render_template("/users.html",
-                           users=user_list)
+                           users=entries,
+                           pagination=pagination,
+                           page=page,
+                           per_page=ITEMS_PER_PAGE)
 
 @app.route('/movies')
 @login_required
@@ -290,6 +327,7 @@ def movies():
     page = request.args.get('page', type=int, default=1)
 
     ITEMS_PER_PAGE = 5
+    #get the current item number
     i = (page - 1) * ITEMS_PER_PAGE
     entries = omdb_movies[i:i+ITEMS_PER_PAGE]
 
@@ -311,7 +349,9 @@ def add_movie():
         try:
             omdb_movie = Movie(movie_from_form)
             if not movies.find_one({"Title":omdb_movie.name}) and omdb_movie.status:
-                movies.insert({'Title': omdb_movie.name, 'IMDb_rating': omdb_movie.IMDb_rating, 'Poster': omdb_movie.poster, 'Plot':omdb_movie.plot})
+                #where omdb_movie is an instance of Movie
+                movies.insert({'Title': omdb_movie.name, 'IMDb_rating': omdb_movie.IMDb_rating, 'Poster': omdb_movie.poster, 'Plot':omdb_movie.plot, 'Genre': omdb_movie.genre})
+                print("OMDB", omdb_movie.genre)
                 flash('Movie was added', 'success')
             else:
                 flash('Movie already exists', 'danger')
