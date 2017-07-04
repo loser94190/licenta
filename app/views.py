@@ -14,9 +14,11 @@ from flask_login import login_user, logout_user, login_required
 from .user import User
 from .recommender import Recommender
 from .movie import Movie, LocalMovie
+from .recommender_item import ItemRecommender
 
 from flask_paginate import Pagination
 
+import re
 import omdb
 import json, requests
 
@@ -69,7 +71,7 @@ def login():
 
         if user_typed is None:
             return render_template("login.html",
-                                   error = "User does not exist")
+                                   error="User does not exist")
 
         elif hashlib.sha224((request.form['pass']).encode('utf-8')).hexdigest() == user_typed['pass']:
             session['username'] = request.form['username']
@@ -140,20 +142,16 @@ def register():
                            title='REGISTER')
 
 
-@app.route('/recommender',  methods=['GET', 'POST'])
-@login_required
-def recommender():
 
+@app.route('/rate_movie',  methods=['GET', 'POST'])
+@login_required
+def rate_movie():
     movie_db = mongo.db.movie_collection
     movie_data = mongo.db.movie_db
+    users = mongo.db.users
     movie_list = [movie['Title'] for movie in movie_data.find({"Title": {'$exists': True}}).sort("Title", pymongo.ASCENDING)]
 
-    #print(movie_list)
-    users = mongo.db.users
-    data = {}
-
     user_mv = users.find_one({"name": session['username']})['movies']
-
     movies = []
 
     if user_mv:
@@ -168,7 +166,8 @@ def recommender():
             poster = movie_data.find_one({'Title': mov})['Poster']
             plot = movie_data.find_one({'Title': mov})['Plot']
             genre = movie_data.find_one({'Title': mov})['Genre']
-            omdb_movie = LocalMovie(title, _rating, poster, plot, genre)
+            director = movie_data.find_one({'Title': mov})['Director']
+            omdb_movie = LocalMovie(title, _rating, poster, plot, genre, director)
 
             if mov not in movies:
                 users.find_and_modify(query={"name":session['username']},
@@ -180,18 +179,10 @@ def recommender():
                     movie_db.insert({'name': mov, 'ratings': [{'rating':rating, 'user':session['username']}]})
                 else:
                     movie_db.find_and_modify(
-                        query = {"name": mov},
+                        query={"name": mov},
                         update={"$push": {"ratings":{'user':session['username'], 'rating':rating}}})
 
             else:
-                #print(users.find({"name": session['username'],'movies.movie':{'$exists':True}}))
-                #users.find_and_modify(query={"name": session['username'],'movies.movie':{'$exists':True}},
-                                      #update={"$set": {movie: rating}})
-                #users.update({"name":session['username'], { '$set': {"movies[movie]" : rating} })
-                ##users.update({'name': session['username'], "movies.movie" : mov}, { '$set': {"rating" : rating} })
-
-                #users.find_and_modify(query={"name": session['username'], 'movies.movie': mov},
-                    #update={"$set": {"movies.movie.rating": rating}})
 
                 users.update({
                     "name": session['username'],
@@ -199,86 +190,142 @@ def recommender():
                     {"$set": {"movies.$.rating": rating}}
                 )
 
-
-                #print("MORE INFO")
-                #print(users.find_one({"name": session['username'],
-                    #"movies": {"$elemMatch": {"movie": mov}}}))
-
             if user_mv:
                 movies = [x['movie'] for x in users.find_one({"name": session['username']})['movies']]
-                #print("MORE INFO")
-                #print(movies)
+
+        return render_template("/rate_movie.html",
+                               user=session['username'],
+                               movies=movie_list,
+                               user_movies=movies)
 
 
-    #find each document that has a 'movies' field,
-    #with size not 0
-    for doc in users.find({'movies':{'$exists':True, '$not': {'$size': 0}}}):
-        #insert the data in a dictionary {'movie': rating}
-        #that will be used as input for the recommender system
-        data[doc['name']] = {z['movie']:z['rating'] for z in doc['movies']}
-
-    print("DATA INFO")
-    print(data)
-
-    r = Recommender(data)
-
-    try:
-        #print(r.recommend(session['username']))
-        recommendations = [touple[0] for touple in r.recommend(session['username'])]
-        omdb_movies = [Movie(mov) for mov in recommendations]
-
-    #check if there are movies in the input data set
-    except KeyError:
-        text = 'You need to add some movies'
-        omdb_movies = []
-
-    #check if there are output recommendations
-    except IndexError:
-        text = "No more recommendations"
-        omdb_movies = []
-
-    return render_template("/recommender.html",
-                           user=session['username'],
-                           movies=movie_list,
-                           user_movies=movies,
-                           recommenations=omdb_movies)
+    return render_template("/rate_movie.html",
+                            user=session['username'],
+                            movies=movie_list,
+                            user_movies=movies)
 
 
-
-'''
-@app.route('/recommender',  methods=['GET', 'POST'])
+@app.route('/recommender',  methods=['GET'])
 @login_required
 def recommender():
+    if request.method == 'GET':
+        text = ''
+        movie_db = mongo.db.movie_collection
+        movie_data = mongo.db.movie_db
+        movie_list = [movie['Title'] for movie in movie_data.find({"Title": {'$exists': True}}).sort("Title", pymongo.ASCENDING)]
+
+        #print(movie_list)
+        users = mongo.db.users
+        data = {}
+
+        user_mv = users.find_one({"name": session['username']})['movies']
+
+        movies = []
+
+        if user_mv:
+            movies = [x['movie'] for x in users.find_one({"name": session['username']})['movies']]
+        #user_movie_list = []
+
+
+        #find each document that has a 'movies' field,
+        #with size not 0
+        for doc in users.find({'movies':{'$exists':True, '$not': {'$size': 0}}}):
+            #insert the data in a dictionary {'movie': rating}
+            #that will be used as input for the recommender system
+            data[doc['name']] = {z['movie']:z['rating'] for z in doc['movies']}
+
+        r = Recommender(data)
+
+        try:
+            recommendations = [tuple[0] for tuple in r.recommend(session['username'])]
+            omdb_movies = [Movie(mov) for mov in recommendations]
+
+        #check if there are movies in the input data set
+        except KeyError:
+            text = 'You need to add some movies'
+            omdb_movies = []
+
+        #check if there are output recommendations
+        except IndexError:
+            text = "No more recommendations"
+            omdb_movies = []
+
+        if text:
+            return render_template("/recommender.html",
+                                   user=session['username'],
+                                   movies=movie_list,
+                                   user_movies=movies,
+                                   recommenations=omdb_movies,
+                                   error=text)
+
+        return render_template("/recommender.html",
+                               user=session['username'],
+                               movies=movie_list,
+                               user_movies=movies,
+                               recommenations=omdb_movies)
+
+
+
+@app.route('/item_recommender',  methods=['GET'])
+@login_required
+def item_recommender():
+
     users = mongo.db.users
-    user_mv = users.find_one({"name": session['username']})['movies']
-    #print(movie_list)
-    movies = []
-    print("INFO")
-    print([x['movie'] for x in users.find_one({"name": session['username']})['movies']])
-    if user_mv:
-        movies = list(k for d in user_mv for k in d.keys())
-    #user_movie_list = []
-    if request.method == 'POST':
-        if session['username']:
-            movie = request.form['movie']
-            rating = request.form['rating']
-            if movie not in movies:
-                users.find_and_modify(query={"name":session['username']},
-                                    update={"$push": {"movies" : {'movie':movie, 'rating':rating}}})
-            else:
-                print(users.find({"name": session['username'],'movies.movie':{'$exists':True}}))
-                #users.find_and_modify(query={"name": session['username'],'movies.movie':{'$exists':True}},
-                                      #update={"$set": {movie: rating}})
-                #users.update({"name":session['username'], { '$set': {"movies[movie]" : rating} })
-                users.update({'name': session['username'], }, { '$set': {"movies.movie" : rating} })
-            if user_mv:
-                movies = list(k for d in users.find_one({"name": session['username']})['movies']['movie'] for k in d.keys())
-            #print(movies)
-    return render_template("/recommender.html",
+    movie_db = mongo.db.movie_collection
+    movie_data = mongo.db.movie_db
+    movie_list = [movie['Title'] for movie in movie_data.find({"Title": {'$exists': True}}).sort("Title", pymongo.ASCENDING)]
+
+    input = {}
+    user_features = []
+
+    for movie in movie_list:
+        title = movie_data.find_one({'Title': movie})['Title']
+        genre = movie_data.find_one({'Title': movie})['Genre']
+        director = movie_data.find_one({'Title': movie})['Director']
+
+        input[title] = genre + director.split(',')
+
+    print("INPUT: ", input)
+
+    print("MOVIE LIST: ", movie_list)
+
+    user_watched = [user['movie'] for user in users.find_one({"name": session['username']})['movies']]
+    print("USER WATCHED ", user_watched)
+
+    for movie in user_watched:
+        #title = movie_data.find_one({'Title': movie})['Title']
+        genre = movie_data.find_one({'Title': movie})['Genre']
+        director = movie_data.find_one({'Title': movie})['Director']
+        user_features = genre
+        for dir in director.split(','):
+            user_features.append(dir)
+
+    print("FEATURES", user_features)
+
+    item_rec = ItemRecommender(input, user_features[:4])
+    recommendations = item_rec.recommend()
+    for item in recommendations:
+        if item[0] in user_watched:
+            print("REMOVE", item)
+            recommendations.remove(item)
+
+    output = []
+    for movie in recommendations:
+        title = movie_data.find_one({'Title': movie[0]})['Title']
+        _rating = movie_data.find_one({'Title': movie[0]})['IMDb_rating']
+        genre = movie_data.find_one({'Title': movie[0]})['Genre']
+        director = movie_data.find_one({'Title': movie[0]})['Director']
+        poster = movie_data.find_one({'Title': movie[0]})['Poster']
+        plot = movie_data.find_one({'Title': movie[0]})['Plot']
+        omdb_movie = LocalMovie(title, _rating, poster, plot, genre, director)
+        output.append(omdb_movie)
+
+    #print("OUTPUT", output[0].title)
+    return render_template("/item_recommender.html",
                            user=session['username'],
-                           movies = movie_list,
-                           user_movies = movies)
-'''
+                           recommenations=output)
+
+
 
 
 @app.route('/users')
@@ -312,35 +359,75 @@ def users():
                            page=page,
                            per_page=ITEMS_PER_PAGE)
 
-@app.route('/movies')
+@app.route('/movies', methods=['GET'])
 @login_required
 def movies():
-    movie_data = mongo.db.movie_db
-    movie_list = [movie['Title'] for movie in movie_data.find({"Title":{'$exists':True}}).sort("Title", pymongo.ASCENDING)]
-    omdb_movies = [Movie(mov) for mov in movie_list]
+    if request.method == 'GET':
+        movie_data = mongo.db.movie_db
+        movie_list = [movie['Title'] for movie in movie_data.find({"Title":{'$exists':True}}).sort("Title", pymongo.ASCENDING)]
+        omdb_movies = [Movie(mov) for mov in movie_list]
 
-    search = False
-    q = request.args.get('q')
-    if q:
-        search = True
+        search = False
+        q = request.args.get('q')
+        if q:
+            search = True
 
-    page = request.args.get('page', type=int, default=1)
+        page = request.args.get('page', type=int, default=1)
 
-    ITEMS_PER_PAGE = 5
-    #get the current item number
-    i = (page - 1) * ITEMS_PER_PAGE
-    entries = omdb_movies[i:i+ITEMS_PER_PAGE]
+        ITEMS_PER_PAGE = 5
+        #get the current item number
+        i = (page - 1) * ITEMS_PER_PAGE
+        entries = omdb_movies[i:i+ITEMS_PER_PAGE]
 
-    pagination = Pagination(page=page, total=len(movie_list), search=search, record_name='movies', per_page=ITEMS_PER_PAGE, css_framework='bootstrap3')
+        pagination = Pagination(page=page, total=len(movie_list), search=search, record_name='movies', per_page=ITEMS_PER_PAGE, css_framework='bootstrap3')
 
-    return render_template("/movies.html",
-                           movies=entries,
-                           pagination=pagination,
-                           page=page,
-                           per_page=5)
+        return render_template("/movies.html",
+                               movies=entries,
+                               pagination=pagination,
+                               page=page,
+                               per_page=5)
+
+
+@app.route('/search', methods=['GET', 'POST'])
+@login_required
+def search():
+    if request.method == "GET":
+        return render_template("/search.html")
+
+    if request.method == "POST":
+        movie_data = mongo.db.movie_db
+
+        movie_querried = request.form['movie']
+        result = [movie['Title'] for movie in
+                  movie_data.find({"Title": {'$regex': re.compile('.*' + movie_querried + '.*', re.IGNORECASE)}}).sort(
+                      "Title", pymongo.ASCENDING)]
+        result = [Movie(mov) for mov in result]
+
+        s = False
+        q = request.args.get('q')
+        if q:
+            s = True
+
+        page = request.args.get('page', type=int, default=1)
+
+        ITEMS_PER_PAGE = 5
+        # get the current item number
+        i = (page - 1) * ITEMS_PER_PAGE
+        entries = result[i:i + ITEMS_PER_PAGE]
+
+        pagination = Pagination(page=page, total=len(result), search=s, record_name='search',
+                                per_page=ITEMS_PER_PAGE, css_framework='bootstrap3')
+
+        return render_template("/search.html",
+                               movies=entries,
+                               pagination=pagination,
+                               page=page,
+                               per_page=5)
+
 
 
 @app.route('/add_movie', methods=['GET', 'POST'])
+@login_required
 def add_movie():
     if request.method == 'POST':
         movies = mongo.db.movie_db
@@ -350,7 +437,7 @@ def add_movie():
             omdb_movie = Movie(movie_from_form)
             if not movies.find_one({"Title":omdb_movie.name}) and omdb_movie.status:
                 #where omdb_movie is an instance of Movie
-                movies.insert({'Title': omdb_movie.name, 'IMDb_rating': omdb_movie.IMDb_rating, 'Poster': omdb_movie.poster, 'Plot':omdb_movie.plot, 'Genre': omdb_movie.genre})
+                movies.insert({'Title': omdb_movie.name, 'IMDb_rating': omdb_movie.IMDb_rating, 'Poster': omdb_movie.poster, 'Plot':omdb_movie.plot, 'Genre': omdb_movie.genre, 'Director':omdb_movie.director})
                 print("OMDB", omdb_movie.genre)
                 flash('Movie was added', 'success')
             else:

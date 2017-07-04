@@ -4,7 +4,7 @@
 
     <div class="jumbotron text-center">
         {% if not current_user.is_authenticated %}
-            <h1>Welcome to GIGEL!</h1>
+            <h1>Welcome to Movie Picker!</h1>
             <p class="lead">This is a movie recommender app. Try it out Yourself!</p>
 
                 <a href="/register" class="btn btn-primary btn-lg">Register</a>
@@ -12,7 +12,7 @@
         {% endif %}
          {% if current_user.is_authenticated %}
              <h1>Hello {{ username }}</h1>
-             <p class="lead" style="margin-top: 1%">Thank you for using Gigel</p>
+             <p class="lead" style="margin-top: 1%">Thank you for using Movie Picker</p>
             {% if plural_check %}
                 <p> There are currentrly {{ user_number }} users registered!</p>
             {% endif %}

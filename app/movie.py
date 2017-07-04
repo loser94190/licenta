@@ -10,6 +10,7 @@ class Movie:
         self.apikey = '43783491'
         self.poster = ''
         self.plot = ''
+        self.director = ''
         self.genre = []
         self.get_info()
         self.status = True
@@ -29,17 +30,19 @@ class Movie:
             self.poster = info['Poster']
             self.name = info['Title']
             self.plot = info['Plot']
+            self.director = info['Director']
             self.genre = info['Genre'].split(",")
             #print(self.genre)
 
 
 class LocalMovie:
-    def __init__(self, title, rating, poster, plot, genre):
+    def __init__(self, title, rating, poster, plot, genre, director):
         self.title = title
         self.rating = rating
         self.poster = poster
         self.plot = plot
         self.genre = genre
+        self.director = director
 
 mov = Movie("The Matrix")
 print(mov.name)
